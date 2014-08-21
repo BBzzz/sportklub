@@ -1,0 +1,78 @@
+@import "compass";
+@import "compass/reset";
+
+@import "_atoms";
+@import "_mixins";
+
+
+html,
+body,
+.container,
+header,
+.full,
+nav,
+article,
+aside,
+footer {
+	@extend .left;
+	width: $width;
+}
+
+body {
+	font-family: $font-family;
+	font-size: 0.9*$font-size;
+	background: #f1f1f1;
+	line-height: $line-height;
+	color: #333333;
+}
+
+.container {
+	margin: $padding 0 $padding;
+	background: #fff;
+}
+
+header {
+	@include sav();
+	font-size: 1.5*$font-size;
+}
+
+nav {
+	@include sav();
+	ul li a {
+		@include menu-item;
+		display: inline;
+		border-right: $border;
+		@extend .left;
+	}
+}
+
+article, 
+h3 {
+	padding: $padding;
+}
+
+h1 {
+	color: #000000;
+	font-size: 1.5*$font-size;
+}
+
+.big {
+	width: $inner-width - 1%;
+}
+
+aside {
+	width: $width - $inner-width - 1%;
+	border: $border;
+}
+
+footer {
+	border-top: $border;
+	font-size: $footer-font-size;
+	padding-top: $padding;
+}
+
+.menu-top {
+	@include menu-item;
+	font-weight: normal;
+	border-left: $border;
+}

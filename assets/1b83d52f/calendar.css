@@ -1,0 +1,18 @@
+table.e-calendar-view{
+	width: 100%;
+}
+
+table.e-calendar-view td {
+  border: 1px solid #aaa;
+	line-height: 1;
+	background-color: grey;
+	vertical-align: baseline !important;
+}
+
+table.e-calendar-view td.not-relevant {
+  color: rgb(221, 221, 221);
+}
+
+table.e-calendar-view td.current.relevant {
+  font-weight: 700;
+}

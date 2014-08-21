@@ -1,0 +1,265 @@
+<?php
+
+class GameController extends Controller
+{
+
+	public $layout='/layouts/column2';
+
+	public function filters()
+	{
+		return array(
+			'accessControl', // perform access control for CRUD operations
+			'postOnly + delete', // we only allow deletion via POST request
+		);
+	}
+
+	public function accessRules()
+	{
+		return array(
+			array('allow',
+				'actions'=>array('create','update','view','admin','delete','getgamesched','getstat'),
+				'users'=>array('@'),
+			),
+			array('deny',  // deny all users
+				'users'=>array('*'),
+			),
+		);
+	}
+
+	public function actionView($id)
+	{
+		$this->render('view',array(
+			'model'=>$this->loadModel($id),
+		));
+	}
+
+	public function actionCreate()
+	{
+		$model=new Game;
+
+		// Uncomment the following line if AJAX validation is needed
+		// $this->performAjaxValidation($model);
+
+		if(isset($_POST['Game']))
+		{
+			$model->attributes=$_POST['Game'];
+			$model->season = $this->getActualData('season');
+			if($model->save())
+				$this->redirect(array('view','id'=>$model->id));
+		}
+
+		$this->render('create',array(
+			'model'=>$model,
+		));
+	}
+
+	public function actionUpdate($id)
+	{
+		$model=$this->loadModel($id);
+
+		// Uncomment the following line if AJAX validation is needed
+		// $this->performAjaxValidation($model);
+
+		if(isset($_POST['Game']))
+		{
+			$model->attributes=$_POST['Game'];
+			if($model->save())
+				$this->redirect(array('view','id'=>$model->id));
+		}
+
+		$this->render('update',array(
+			'model'=>$model,
+		));
+	}
+
+	public function actionDelete($id)
+	{
+		$this->loadModel($id)->delete();
+
+		// if AJAX request (triggered by deletion via admin grid view), we should not redirect the browser
+		if(!isset($_GET['ajax']))
+			$this->redirect(isset($_POST['returnUrl']) ? $_POST['returnUrl'] : array('admin'));
+	}
+
+	public function actionIndex()
+	{
+		$dataProvider=new CActiveDataProvider('Game');
+		$this->render('index',array(
+			'dataProvider'=>$dataProvider,
+		));
+	}
+
+	public function actionAdmin()
+	{
+		$model=new Game('search');
+		$model->unsetAttributes();  // clear any default values
+		if(isset($_GET['Game']))
+			$model->attributes=$_GET['Game'];
+
+		$this->render('admin',array(
+			'model'=>$model,
+		));
+	}
+
+	public function loadModel($id)
+	{
+		$model=Game::model()->findByPk($id);
+		if($model===null)
+			throw new CHttpException(404,'The requested page does not exist.');
+		return $model;
+	}
+
+
+	protected function performAjaxValidation($model)
+	{
+		if(isset($_POST['ajax']) && $_POST['ajax']==='game-form')
+		{
+			echo CActiveForm::validate($model);
+			Yii::app()->end();
+		}
+	}
+
+	public function actiongetGameSched()
+	{
+		$season = $this->getActualData('season');
+		$ext_id = $this->getActualData('team_id');
+		$response = $this->runJKBApi('season.games',array('season'=>$season));
+		if (!$response->error){
+			Game::model()->deleteAll('season = :season',array(':season' => $season));
+			foreach ($response->result as $phases)
+				foreach ($phases as $index=>$phase){
+					if (!$index)
+						if ($phase == 'Alapszakasz')
+							$game_type = 1;
+						else $game_type = 3;
+					else
+						foreach ($phase as $game)
+							if ($game->tid_h == $ext_id || $game->tid_v == $ext_id){
+								$n_game = new Game;
+			
+								$n_game->season = $season;
+								$n_game->ext_id = $game->gid;
+								$n_game->g_date = $game->sd;
+								$n_game->g_time = $game->st;
+								$h_team = Team::model()->findByAttributes(array('ext_id'=>$game->tid_h));
+								$a_team = Team::model()->findByAttributes(array('ext_id'=>$game->tid_v));
+								$n_game->team_h = $h_team->id;
+								$n_game->team_a = $a_team->id;
+								$n_game->g_cat = $game_type;
+								$n_game->place = $h_team->place;
+								$n_game->save(false);
+						}
+				}
+		}
+		$this->redirect('admin');
+	}
+
+	public function actiongetStat($id)
+	{
+		$ext_id = $this->getActualData('team_id');
+		$game = Game::model()->findByPk($id);
+		$team_home = Team::model()->findByPk($game->team_h);
+		$isathome = ($team_home->ext_id == $ext_id) ? true : false;
+		$response = $this->runJKBApi('game',array('gid'=>$game->ext_id));
+		if (!$response->error){
+			GoalieStat::model()->deleteAll('g_id = :gid',array(':gid' => $id));	
+			ShootingStat::model()->deleteAll('g_id = :gid',array(':gid' => $id));
+			$gs = GoalStat::model()->findAllByAttributes(array('g_id' => $id));
+			foreach($gs as $stat){
+				GoalStatLine::model()->deleteByPk($stat->id);
+				GoalStat::model()->deleteByPk($stat->id);
+			}
+			foreach ($response->result as $i_index=>$infos){
+		 		if ($i_index == "l0"){
+					foreach ($infos as $goalie)
+						if(is_object($goalie))
+							if ($isathome){
+								$this->createGoalie($id,$game->team_h,$goalie->PA,$goalie->NA);
+								$this->createGoalie($id,$game->team_a,$goalie->PB,$goalie->NB);
+							}else{
+								$this->createGoalie($id,$game->team_h,$goalie->PB,$goalie->NB);
+								$this->createGoalie($id,$game->team_a,$goalie->PA,$goalie->NA);
+							}			
+				}elseif ($i_index[0] == "l" && is_numeric($i_index[1]))
+					foreach ($infos as $pos=>$player)
+						if(is_object($player)){
+							$soga = 0;
+							$sogb = 0;
+							if (isset($player->SoGA))
+								$soga = $player->SoGA;
+							if (isset($player->SoGB))
+								$sogb = $player->SoGB;
+							if ($isathome){
+								$this->createPlayer($id,$game->team_h,$player->PA,$player->NA,$i_index[1],$pos,$soga);
+								$this->createPlayer($id,$game->team_a,$player->PB,$player->NB,$i_index[1],$pos,$sogb);
+							}else{
+								$this->createPlayer($id,$game->team_h,$player->PB,$player->NB,$i_index[1],$pos,$sogb);
+								$this->createPlayer($id,$game->team_a,$player->PA,$player->NA,$i_index[1],$pos,$soga);
+							}
+						}
+						switch ($i_index){
+							case "hg":
+									foreach ($infos as $record)
+										if(is_object($record)){
+											if ($isathome)
+												$this->createGStat($id,$game->team_h,$record);
+											else
+												$this->createGStat($id,$game->team_a,$record);
+										}
+									break;
+						}
+			}
+		}
+//		$this->redirect('view',array('id'=>$gid));
+	}
+
+	public function createGoalie($gid,$team,$pl_id,$jersey_no)
+	{
+		$n_goalie = new GoalieStat;
+		$n_goalie->g_id = $gid;
+		$n_goalie->t_id = $team;
+		$n_goalie->pl_id = $pl_id;
+		$n_goalie->j_no = $jersey_no;
+		$n_goalie->save(false);
+	}
+
+	public function createPlayer($gid,$team,$pl_id,$jersey_no,$row,$pos,$sog)
+	{
+		$n_player = new ShootingStat;
+		$n_player->g_id = $gid;
+		$n_player->t_id = $team;
+		$n_player->pl_id = $pl_id;
+		$n_player->j_no = $jersey_no;
+		$n_player->row = $row;
+		$n_player->pos = $pos;
+		$n_player->sog = $sog;
+		$n_player->save(false);
+	}
+
+	public function createGStat($gid,$team,$record)
+	{
+		$n_gs = new GoalStat;
+		$n_gs->g_id = $gid;
+		$n_gs->t_id = $team;
+		$n_gs->pl_id = $record->G;
+		$n_gs->e_time = $record->T;
+		$n_gs->save(false);
+	
+		if (isset($record->A1))
+			$this->createGStatL($n_gs->id,$team,$record->A1,'A1');
+		if (isset($record->A2))
+			$this->createGStatL($n_gs->id,$team,$record->A2,'A2');
+
+
+	}
+
+	public function createGStatL($sid,$team,$pl_id,$e_type)
+	{
+		$n_gsl = new GoalStatLine;
+		$n_gsl->s_id = $sid;
+		$n_gs->t_id = $team;
+		$n_gs->pl_id = $pl_id;
+		$n_gs->e_type = $e_type;
+		$n_gsl->save(false);
+	}
+}

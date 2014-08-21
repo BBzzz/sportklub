@@ -1,0 +1,7 @@
+table.e-calendar-view td.not-relevant {
+  color: rgb(221, 221, 221);
+}
+
+table.e-calendar-view td {
+  border: 1px solid #aaa;
+}

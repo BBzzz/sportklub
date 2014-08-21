@@ -1,0 +1,21 @@
+<?php
+$gallery = Gallery::model()->findByAttributes(array('page_id'=>$model->recap->page_id));
+if ($gallery) {
+	$images = $gallery->images;
+	foreach ($images as $image){
+		$image = Yii::app()->baseUrl.'/photos/'.$image->name;
+		break;
+	}
+}
+?>
+<header class="page">
+	<?php if (isset($image)):?>
+	<div class="main_picture" style="background-image: url(<?php echo $image;?>);"></div>	
+	<h2><?php echo $model->recap->page->title; ?></h2>
+	<?php else: ?>
+	<h3><?php echo $model->recap->page->title; ?></h3>
+	<?php endif ;?>
+</header>
+<div class="page">
+	<?php echo Yii::app()->format->ntext($model->content);?>
+</div>

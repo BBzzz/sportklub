@@ -1,0 +1,32 @@
+<?php
+$response = $this->getStandingsFromJKB();
+if ($response){
+?>
+<table style="width: 100%;">
+<thead>
+	<tr>
+	<th>#</th>
+	<th><?php echo Yii::t('standings','Név');?></th>
+	<th><?php echo Yii::t('standings','M');?></th>
+	<th><?php echo Yii::t('standings','P');?></th>
+	<th><?php echo Yii::t('standings','Gólok');?></th>
+	<th><?php echo Yii::t('standings','GK');?></th>
+	</tr>
+<?php 
+foreach($response->result->ta as $team){
+	$class ='';
+	if ($team->tid == $this->getActualData('team_id'))
+		$class ='home';
+	echo "<tr class='".$class."'>";
+  echo "<td>".$team->pos."</td>";
+	echo "<td>".$team->ts."</td>";
+	echo "<td>".$team->gp."</td>";
+	echo "<td>".$team->p."</td>";
+	echo "<td>".$team->g."-".$team->ga."</td>";
+	echo "<td>".$team->gd."</td>";
+	echo "</tr>";
+}
+?>
+</table>
+<?php
+}?>

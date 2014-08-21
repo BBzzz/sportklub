@@ -1,0 +1,20 @@
+<?php
+/* @var $this NewsController */
+/* @var $model News */
+
+$this->breadcrumbs=array(
+	'News'=>array('index'),
+	$model->id=>array('view','id'=>$model->id),
+	'Update',
+);
+
+$this->menu=array(
+	array('label'=>'Új hír', 'url'=>array('create')),
+	array('label'=>'Hír megtekitése', 'url'=>array('view', 'id'=>$model->id)),
+	array('label'=>'Hírek adminisztrálása', 'url'=>array('admin')),
+);
+?>
+
+<h1>A <?php echo $model->denomination; ?> hír módosítása</h1>
+
+<?php $this->renderPartial('_form', array('model'=>$model)); ?>

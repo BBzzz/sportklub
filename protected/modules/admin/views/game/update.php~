@@ -1,0 +1,11 @@
+<?php
+$this->menu=array(
+	array('label'=>'Új mérkőzés', 'url'=>array('create')),
+	array('label'=>'Mérkőzés megtekintése', 'url'=>array('view', 'id'=>$model->id)),
+	array('label'=>'Mérkőzések adminisztrálása', 'url'=>array('admin')),
+);
+?>
+
+<h1><?php echo $model->h_team->short_name." - ".$model->a_team->short_name."/".$model->g_date; ?> mérkőzés módosítása</h1>
+
+<?php $this->renderPartial('_form', array('model'=>$model)); ?>

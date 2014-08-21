@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="<?php echo Yii::app()->language;?>">
+<head>
+	<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+	<link href='http://fonts.googleapis.com/css?family=Oxygen:400,700|Economica:700|Nunito:700&amp;subset=latin,latin-ext' rel='stylesheet' type='text/css'>
+	<!--[if lt IE 8]>
+	<link rel="stylesheet" type="text/css" href="<?php echo Yii::app()->request->baseUrl; ?>/css/ie.css" media="screen, projection" />
+	<![endif]-->
+	<link rel="stylesheet" href="<?php echo Yii::app()->request->baseUrl; ?>/assets/css/font-awesome/css/font-awesome.min.css">
+	<?php 
+		Yii::app()->getClientScript()->registerCssFile(Yii::app()->theme->baseUrl.'/css/main.css?v='.strtotime('now'));
+		Yii::app()->getClientScript()->registerCssFile(Yii::app()->request->baseUrl.'/assets/css/lightbox/lightbox.css');
+		Yii::app()->clientScript->registerPackage('lightbox');
+	?>
+	<title><?php echo CHtml::encode($this->pageTitle); ?></title>
+</head>
+
+<body>
+<div class="border left">&nbsp;</div>
+	<div class="container">
+		<div class="big">
+		<header>
+			<?php echo CHtml::link('<div id="logo"></div>', array('/site/index'));?>
+			<nav class="lang">
+				<ul>
+		<?php foreach (Yii::app()->params->languages as $index=>$language){
+						if (Yii::app()->language == $language)
+							$elotag = "<li class='active'>";
+						else $elotag = "<li>";						
+						echo $elotag.CHtml::link($language, array('/site/translate', 'id'=>$index));				
+						echo "</li>";
+					}
+		?>
+				</ul>
+			</nav>
+			<div class="main_text">
+				<nav class="top-menu">
+		<?php
+			$this->widget('zii.widgets.CMenu',array(
+				'items'=>array(
+						array(
+							'label'=>Yii::t('default','Kapcsolat'), 
+							'url'=>array('/site/contact'),
+						),
+						array(
+							'label'=>Yii::t('default','Belépés'), 
+							'url'=>array('/site/login'),
+							'visible'=>Yii::app()->user->isGuest,
+						),
+						array(
+							'label'=>Yii::t('default','Regisztráció'), 
+							'url'=>array('/user/create'),
+							'visible'=>Yii::app()->user->isGuest,
+						),
+						array(
+							'label'=>'Adminisztráció', 
+							'url'=>array('/admin/user/admin'),
+							'visible'=>!Yii::app()->user->isGuest && Yii::app()->authManager->checkAccess("editor", Yii::app()->user->id),
+						),
+						array(
+							'label'=>Yii::t('default','Kilépés ({user})',array('{user}'=>Yii::app()->user->name)), 
+							'url'=>array('/site/logout'),
+							'visible'=>!Yii::app()->user->isGuest,
+						),
+						array(
+							'label'=>Yii::t('default','Keresés'), 
+							'url'=>array('/site/search'),
+							'itemOptions'=>array('class'=>'search'),
+						),
+			)));
+			?>
+				</nav>
+				<h1><?php echo CHtml::encode(Yii::t('default','Nem ma kezdtük!')); ?></h1>
+			</div>			
+		</header>
+	</div>
+	<nav class="menu">
+		<?php Yii::app()->clientScript->registerPackage('accordion');
+					$this->widget('zii.widgets.CMenu',array(
+						'items'=>$this->getMenuTree(Yii::app()->language)));
+					$isPage = $this->getId() === 'page'; 
+					$isGame = $this->getId() === 'game'; 
+					if (!$isGame)
+						$class="support left";
+					else
+						$class="gallery left";
+		?>
+	</nav>
+
+	<?php echo $content; ?>
+
+	<div class="<?php echo $class;?>">
+		<?php
+			if ($isGame || $isPage){			
+				if ($isPage && isset($_GET['slug']))
+					$page = Page::model()->findByAttributes(array('slug'=>$_GET['slug']));
+				if ($isGame && isset($_GET['id'])){
+					$game = Game::model()->findByPk($_GET['id']);
+					$page = Page::model()->findByPk($game->recap->page_id);
+				}
+				echo $this->getGallery($page->id);
+			}else
+				echo $this->getSupport(Yii::app()->language);
+		?>
+	</div>
+
+	<footer>
+		<div class="footer">
+			&copy; <?php echo date('Y'); ?> sportclub.ro<br/>
+			<?php echo CHtml::encode(Yii::t('default','Minden jog fenntartva.')); ?><br/>
+			<?php echo Yii::powered(); ?>
+		</div>
+	</footer><!-- footer -->
+
+	</div><!-- container -->
+<div class="border right">&nbsp;</div>
+</body>
+</html>

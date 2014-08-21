@@ -1,0 +1,173 @@
+<?php
+
+class ImageController extends Controller
+{
+
+	public $layout='/layouts/column2';
+	
+	protected $_gallery = null;
+
+	public function filters()
+	{
+		return array(
+			'accessControl', // perform access control for CRUD operations
+			'postOnly + delete', // we only allow deletion via POST request
+			'galleryContext + create',
+		);
+	}
+
+	public function filterGalleryContext($filterChain)
+	{
+		$galleryId = null;
+		if(isset($_GET['gid']))
+			$galleryId = $_GET['gid'];
+		else
+			if(isset($_POST['gid']))
+				$galleryId = $_POST['gid'];
+		$this->loadGallery($galleryId);
+		$filterChain->run();
+	}
+
+	protected function loadGallery($gallery_id)
+	{
+		if($this->_gallery===null)
+		{
+			$this->_gallery=Gallery::model()->findbyPk($gallery_id);
+			if($this->_gallery===null)
+				throw new CHttpException(404,'A galéria nem volt megadva!');
+		}
+		return $this->_gallery;
+	}
+
+	public function accessRules()
+	{
+		return array(
+			array('allow', // allow authenticated user to perform 'create' and 'update' actions
+				'actions'=>array('create','update','view','admin','delete'),
+				'users'=>array('@'),
+			),
+			array('deny',  // deny all users
+				'users'=>array('*'),
+			),
+		);
+	}
+
+	public function actionView($id)
+	{
+		$this->render('view',array(
+			'model'=>$this->loadModel($id),
+		));
+	}
+
+	public function actionCreate()
+	{
+		$model=new Image;
+		$model->gallery_id = $this->_gallery->id;
+
+		// Uncomment the following line if AJAX validation is needed
+		// $this->performAjaxValidation($model);
+
+		if(isset($_POST['Image']))
+		{
+			$model->attributes=$_POST['Image'];		
+
+			$rnd = rand(0,9999);  // generate random number between 0-9999
+ 			$uploadedFile = CUploadedFile::getInstance($model,'name');
+			if ($uploadedFile != null) {
+      	$fileName = "{$rnd}-{$uploadedFile}";  // random number + file name
+      	$model->name = $fileName;
+			}
+			if($model->save())
+      {
+				if (!empty($uploadedFile)) 
+					$uploadedFile->saveAs(Yii::app()->basePath.'/../photos/'.$fileName);
+      	if (Yii::app()->request->isAjaxRequest)
+        {
+        	echo CJSON::encode(array(
+          		'status' => 'success', 
+            	'div'=> "A képet sikeresen feltöltötte!",
+							'name' => $model->name,
+           ));
+          exit;               
+        } else $this->redirect(array('gallery/update', 'id'=>$model->gallery_id));
+      }
+		}
+		$model->title = $this->_gallery->title;
+		if (Yii::app()->request->isAjaxRequest)
+    {
+//			Yii::app()->clientScript->scriptMap['jquery.js'] = false;
+    	echo CJSON::encode(array(
+      			'status'=>'failure',
+          	'div'=>$this->renderPartial('_form', array('model'=>$model),true,true)
+						));
+      exit;               
+    } else $this->render('create',array(
+			'model'=>$model,
+		));
+	}
+
+	public function actionUpdate($id)
+	{
+		$model=$this->loadModel($id);
+
+		// Uncomment the following line if AJAX validation is needed
+		// $this->performAjaxValidation($model);
+
+		if(isset($_POST['Image']))
+		{
+			$model->attributes=$_POST['Image'];
+			if($model->save())
+				$this->redirect(array('view','id'=>$model->id));
+		}
+
+		$this->render('update',array(
+			'model'=>$model,
+		));
+	}
+
+	public function actionDelete($id)
+	{
+		$this->loadModel($id)->delete();
+
+		// if AJAX request (triggered by deletion via admin grid view), we should not redirect the browser
+		if(!isset($_GET['ajax']))
+			$this->redirect(isset($_POST['returnUrl']) ? $_POST['returnUrl'] : array('admin'));
+	}
+
+	public function actionIndex()
+	{
+		$dataProvider=new CActiveDataProvider('Image');
+		$this->render('index',array(
+			'dataProvider'=>$dataProvider,
+		));
+	}
+
+	public function actionAdmin()
+	{
+		$model=new Image('search');
+		$model->unsetAttributes();  // clear any default values
+		if(isset($_GET['Image']))
+			$model->attributes=$_GET['Image'];
+
+		$this->render('admin',array(
+			'model'=>$model,
+		));
+	}
+
+	public function loadModel($id)
+	{
+		$model=Image::model()->findByPk($id);
+		if($model===null)
+			throw new CHttpException(404,'The requested page does not exist.');
+		return $model;
+	}
+
+	protected function performAjaxValidation($model)
+	{
+		if(isset($_POST['ajax']) && $_POST['ajax']==='image-form')
+		{
+			echo CActiveForm::validate($model);
+			Yii::app()->end();
+		}
+	}
+}

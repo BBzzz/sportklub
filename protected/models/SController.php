@@ -1,0 +1,136 @@
+<?php
+
+class SController extends Controller
+{
+	public function getPage($id)
+	{
+		$page = Page::model()->findByPk($id);
+		if ($page)
+				$this->renderPartial('/page/_view',array('model'=>$page));
+	}
+
+	public function getGallery($page_id)
+	{
+		if ($page_id){
+			$order= '';
+			$gallery=Gallery::model()->find('page_id=:pid',array(':pid'=>$page_id));
+			if ($gallery)
+				$condition ='gallery_id='.$gallery->id;
+			$galleryid ='gallery_'.$page_id;
+		}
+		if ($gallery){
+			$dataProvider=new CActiveDataProvider('Image', array(
+    		'criteria'=>array(
+      		'order'=>$order,
+					'condition'=>$condition,
+    		),
+    		'pagination'=>array(
+        	'pageSize'=>8,
+    		),
+			));
+			$images = $dataProvider->getData();
+			if (count($images) > 1){
+				foreach ($images as $image){
+					echo "<div class='image' style='background-image: url(".Yii::app()->baseUrl.'/photos/'.$image->name.");'><a href='".Yii::app()->baseUrl.'/photos/'.$image->name."' data-lightbox='".$galleryid."'><div class='overlay'><span class='plus'>+</span></div></a></div>";
+				}
+			}
+		}
+	}
+
+	public function getSupport($lang)
+	{
+		$ads = Ad::model()->findAll('ad_type=0');
+		if ($ads){
+			echo "<h2>".CHtml::encode(Yii::t('default','Támogatók'))."</h2>";
+			foreach($ads as $ad){
+				echo "<article><h3>".$ad->owner."</h3>".CHtml::link(CHtml::image(Yii::app()->baseUrl.'/photos/'.$ad->banner),array('ad/redirect','id'=>$ad->id),array('target'=>'_blank'))."</article>";
+			}
+		}
+	}
+
+	public function getSlideShow($lang)
+	{
+		$dataProvider=new CActiveDataProvider('Page', array(
+    	'criteria'=>array(
+				'condition'=>'lang = "'.$lang.'" AND generated = 1 AND approved = 1',
+        'order'=>'create_time DESC,id DESC',
+    	),
+			'pagination'=>array(
+        'pageSize'=>5,
+    	),
+		));  
+		$this->renderPartial('/site/slideshow', array('dataProvider'=>$dataProvider));
+	}
+
+	public function getStandings()
+	{
+		if (Yii::app()->file->set('files/standings.txt')->exists){
+			$myfile = Yii::app()->file->set('files/standings.txt',true);
+//		if ($myfile->timeModified <5 min)
+//			$response = $myfile->getContents();
+				$response = null;
+		}else $response = $this->getStandingsFromJKB();
+		return $response;
+	}
+
+	public function getStandingsFromJKB()
+	{
+		$response = $this->runJKBApi('season.stat',array('season'=>$this->getActualData('season')),0);
+		if ($response && !$response->error){
+			return $response;
+		}else return null;
+	}
+
+	public function getNews($lang)
+	{
+		$dataProvider=new CActiveDataProvider('News', array(
+    	'criteria'=>array(
+				'condition'=>'lang = "'.$lang.'"',
+        'order'=>'n_date DESC',
+    	),
+			'pagination'=>array(
+        'pageSize'=>3,
+    	),
+		)); 
+		$data_arr = $dataProvider->getData();
+		foreach($data_arr as $record)
+			$this->renderPartial('/news/_viewm', array('data'=>$record));
+	}
+
+	public function getLastBoxScore($lang)
+	{
+		$dataProvider=new CActiveDataProvider('Game', array(
+    	'criteria'=>array(
+				'condition'=>'g_state = 1',
+        'order'=>'g_date DESC',
+    	),
+			'pagination'=>array(
+        'pageSize'=>1,
+    	),
+		)); 
+		$data_arr = $dataProvider->getData();
+		foreach($data_arr as $record)
+			$this->renderPartial('/game/_view', array('data'=>$record));
+	}
+
+	public function getBoxScore($id)
+	{
+		$model=Game::model()->findByPk($id); 
+		$this->renderPartial('/game/_view', array('data'=>$model));
+	}
+
+	public function getSidePage($lang)
+	{
+		echo '<h2>Facebook</h2>
+<div id="fb-root"></div>
+<script>(function(d, s, id) {
+  var js, fjs = d.getElementsByTagName(s)[0];
+  if (d.getElementById(id)) return;
+  js = d.createElement(s); js.id = id;
+  js.src = "//connect.facebook.net/hu_HU/sdk.js#xfbml=1&version=v2.0";
+  fjs.parentNode.insertBefore(js, fjs);
+}(document, "script", "facebook-jssdk"));</script>
+
+<div class="fb-like-box" data-href="https://www.facebook.com/HSCCsikszeredaOfficial" data-width="250" data-colorscheme="dark" data-show-faces="true" data-header="false" data-stream="false" data-show-border="false"></div>';
+	}
+}

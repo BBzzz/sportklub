@@ -1,0 +1,23 @@
+@mixin sav ($height:1.25) {
+	background-color: #F8F8F8;
+	line-height: $height*$line-height;
+	border-bottom: $border;
+	font-size: $font-size;
+}
+
+@mixin active-menu-item {
+	font-family: FontAwesome;
+	content: "\f111";
+	color: black;
+	font-size: $menu-font-size;
+}
+
+@mixin menu-item {
+	padding: $padding;
+	font-family: $menu-font-family;
+	font-weight: 700;
+	font-size: $menu-font-size;
+	& a:hover {
+		color: $hover-color;
+	}
+}
